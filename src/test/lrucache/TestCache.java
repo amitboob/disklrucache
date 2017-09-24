@@ -6,9 +6,13 @@ import static org.testng.Assert.assertNull;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
+import org.testng.internal.collections.Pair;
 
 import main.lrucache.Cache;
 
@@ -17,8 +21,7 @@ public class TestCache {
     CategoryCache catCache;
     StrCache strCache;
 
-    // cache file on disk will be generated in current projects directory on
-    // disk
+    //cache file on disk will be generated in current projects directory on disk
     final String DIR_PATH = "./testcache/";
 
     @BeforeTest
@@ -35,6 +38,7 @@ public class TestCache {
     @Test(priority = 0) // create cache first time
     public void testStringObject() {
 
+        strCache.clearCache();
         System.out.println("Creating cache");
         strCache.printCache();
         strCache.put("A", "av");
@@ -81,19 +85,43 @@ public class TestCache {
     @Test(priority = 2)
     public void testDiskStringThreadedObject() {
 
+        strCache.clearCache();
+        List<Pair<String, String>> inputList = new ArrayList<>();
+        List<Pair<String, String>> outputList = new ArrayList<>();
+
+        List<Boolean> lock = new ArrayList<>();
+
+        inputList.add(new Pair<String, String>("AB", "t10"));
+        inputList.add(new Pair<String, String>("AC", "t11"));
+        inputList.add(new Pair<String, String>("AD", "t12"));
+        inputList.add(new Pair<String, String>("BB", "t13"));
+        inputList.add(new Pair<String, String>("BT", "t14"));
+        inputList.add(new Pair<String, String>("TB", "t15"));
+
         Thread t1 = new Thread(new Runnable() {
 
             @Override
             public void run() {
 
-                strCache.put("AB", "t10");
-                strCache.put("AC", "t11");
-                strCache.put("AD", "t12");
-                strCache.put("BB", "t13");
-                strCache.put("BT", "t14");
-                strCache.put("TB", "t15");
+                for (Pair<String, String> pair : inputList) {
+                    synchronized (lock) {
 
-                throw new RuntimeException();
+                        try {
+                            while (!lock.isEmpty()) {
+                                lock.wait();
+                            }
+                            strCache.put(pair.first(), pair.second());
+
+                            lock.add(true);
+                            lock.notify();
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+
+                    }
+
+                }
 
             }
         });
@@ -103,13 +131,26 @@ public class TestCache {
             @Override
             public void run() {
 
-                strCache.put("NM", "t20");
-                strCache.put("CA", "t21");
-                strCache.put("DK", "t22");
+                for (Pair<String, String> pair : inputList) {
 
-                strCache.put("BP", "t23");
-                strCache.put("BW", "t24");
-                strCache.put("TB", "t25");
+                    synchronized (lock) {
+
+                        try {
+                            while (lock.isEmpty()) {
+                                lock.wait();
+                            }
+                            outputList.add(new Pair<String, String>(pair.first(), strCache.get(pair.first())));
+
+                            lock.clear();
+                            lock.notify();
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+
+                    }
+
+                }
 
             }
         });
@@ -125,6 +166,12 @@ public class TestCache {
         }
 
         assertEquals(4, strCache.size());
+
+        assertEquals(inputList.size(), outputList.size());
+
+        for (int i = 0; i < inputList.size(); i++) {
+            assertEquals(inputList.get(i), outputList.get(i));
+        }
     }
 
     @Test

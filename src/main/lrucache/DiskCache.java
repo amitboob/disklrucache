@@ -169,7 +169,7 @@ public class DiskCache<K, V extends Serializable> implements Cache<K, V> {
         }
     }
 
-    protected void clearCache(){
+    public void clearCache(){
         cacheEntries.clear();
     }
 
