@@ -14,10 +14,11 @@ import main.lrucache.Cache;
 
 public class TestCache {
 
-    Cache<Category, ArrayList<SubCategory>> catCache;
+    CategoryCache catCache;
     StrCache strCache;
 
-    //cache file on disk will be generated in current projects directory on disk
+    // cache file on disk will be generated in current projects directory on
+    // disk
     final String DIR_PATH = "./testcache/";
 
     @BeforeTest
@@ -75,6 +76,55 @@ public class TestCache {
         assertNotNull(strCache.get("B"));
         System.out.println("get cache from disk");
         strCache.printCache();
+    }
+
+    @Test(priority = 2)
+    public void testDiskStringThreadedObject() {
+
+        Thread t1 = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+
+                strCache.put("AB", "t10");
+                strCache.put("AC", "t11");
+                strCache.put("AD", "t12");
+                strCache.put("BB", "t13");
+                strCache.put("BT", "t14");
+                strCache.put("TB", "t15");
+
+                throw new RuntimeException();
+
+            }
+        });
+
+        Thread t2 = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+
+                strCache.put("NM", "t20");
+                strCache.put("CA", "t21");
+                strCache.put("DK", "t22");
+
+                strCache.put("BP", "t23");
+                strCache.put("BW", "t24");
+                strCache.put("TB", "t25");
+
+            }
+        });
+
+        t1.start();
+        t2.start();
+
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        assertEquals(4, strCache.size());
     }
 
     @Test

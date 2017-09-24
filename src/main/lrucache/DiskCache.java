@@ -173,6 +173,10 @@ public class DiskCache<K, V extends Serializable> implements Cache<K, V> {
         cacheEntries.clear();
     }
 
+    public int size(){
+        return cacheEntries.size();
+    }
+
     static enum OperationType {
         ACCESS, REMOVE // ACCESS denotes entry was accessed (get or put)
                        //REMOVE if entry is explicity removed aur removed due to lru
